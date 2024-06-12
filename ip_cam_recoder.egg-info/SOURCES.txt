@@ -1,0 +1,8 @@
+LICENSE
+MANIFEST.in
+README.md
+setup.py
+ip_cam_recoder.egg-info/PKG-INFO
+ip_cam_recoder.egg-info/SOURCES.txt
+ip_cam_recoder.egg-info/dependency_links.txt
+ip_cam_recoder.egg-info/top_level.txt
