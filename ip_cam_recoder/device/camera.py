@@ -10,14 +10,14 @@ class Camera:
         self.video = cv2.VideoCapture(self.rtsp_link)
         self.stop_stream_capture = False
 
-    def start_camera(self):
+    def start_camera(self, device_name="Camera"):
         self.stop_stream_capture = True
         started_time = time.time()
         while True:
             _, frame = self.video.read()
-            cv2.namedWindow("FRONT_CAM", cv2.WINDOW_NORMAL)
+            cv2.namedWindow(device_name, cv2.WINDOW_NORMAL)
             custom_window = cv2.resize(frame, (960, 540))
-            cv2.imshow("FRONT_CAM", custom_window)
+            cv2.imshow(device_name, custom_window)
             cv2.waitKey(1)
             track_duration = (time.time() - started_time) / 60
             if (track_duration > self.duration) or (self.stop_stream_capture == False):
