@@ -1,4 +1,5 @@
 argparse
 numpy
 opencv-contrib-python
+opencv-python
 python-dotenv

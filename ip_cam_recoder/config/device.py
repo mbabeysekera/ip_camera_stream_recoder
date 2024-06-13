@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 
-def check_for_environment(environment=""):
+def check_for_environment(environment: str = "") -> None:
     # Set environment to be able to get the correct .env file.
     logger.debug("Environment: " + environment)
     path_to_dotenv = ""
@@ -19,11 +19,11 @@ def check_for_environment(environment=""):
     logger.info("Environment was initiated with file: %s.", path_to_dotenv)
 
 
-def get_device(name_prefix):
-    devices = ""
+def get_device(name_prefix: str) -> str:
+    device = ""
     try:
-        devices = os.getenv(name_prefix)
+        device = os.getenv(name_prefix)
     except:
         raise Exception("No device in environment with name: " + name_prefix)
     logger.info("Device name: %s exists in the environment.", name_prefix)
-    return devices
+    return device
