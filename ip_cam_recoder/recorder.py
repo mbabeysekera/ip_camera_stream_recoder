@@ -13,10 +13,15 @@ def main():
     logging.basicConfig(encoding="utf-8", level=loglevel)
     device.check_for_environment(environment="local")
 
-    ip_cam_01 = camera.Camera(device.get_device("CAM_00"), duration=1)
-    ip_cam_01.record_config()
+    ip_cam_01 = camera.Camera(
+        device.get_device("CAM_00"),
+        duration=1,
+        human_detection=True,
+        device_name="FrontPorch",
+        rec_en=True,
+        record_path="D:\ip-cam",
+    )
     ip_cam_01.start_camera()
-    ip_cam_01.stop_camera()
 
 
 if __name__ == "__main__":
