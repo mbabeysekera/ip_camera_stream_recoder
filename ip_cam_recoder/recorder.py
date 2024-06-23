@@ -15,11 +15,13 @@ def main():
 
     ip_cam_01 = camera.Camera(
         device.get_device("CAM_00"),
+        max_retries=5,
         duration=1,
         human_detection=True,
         device_name="FrontPorch",
         rec_en=True,
         record_path="D:\ip-cam",
+        frame_size=(640, 480),
     )
     ip_cam_01.start_camera()
 
