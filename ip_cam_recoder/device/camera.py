@@ -74,6 +74,7 @@ class Camera:
     ):
         # logger.info("RTSP stream initialized for %s", self.device_name)
         capture = cv2.VideoCapture(rtsp_link)
+        # capture = cv2.VideoCapture(0)
         retry_counter = 0
         while not stop_event.is_set():
             ret, frame = capture.read()
@@ -102,19 +103,21 @@ class Camera:
 
     def captured_stream_processor(
         self,
+        is_recording_enabled: bool,
         frame_size: cv2.typing.Size,
         rtsp_queue: multiprocessing.Queue,
         stop_event: multiprocessing.Event,
     ):
         # logger.info("RTSP stream processor initialized for %s", self.device_name)
-        writer = self.__record_config(path=self.record_path)
         # self.stop_stream_capture = True
         started_time = time.time()
-        if self.human_detection:
-            human_detector = self.__enable_human_detection()
-            # logger.info("Human detection enabled for camera: %s", self.device_name)
+        # if self.human_detection:
+        #     human_detector = self.__enable_human_detection()
+        # logger.info("Human detection enabled for camera: %s", self.device_name)
         previous_mean = 0.0
         cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
+        record_init_time = 0
+        recording = False
         while not stop_event.is_set():
             if not rtsp_queue.empty():
                 custom_window = cv2.resize(rtsp_queue.get(), frame_size)
@@ -122,18 +125,28 @@ class Camera:
                 detection_level, previous_mean = self.__any_motion_detection(
                     gray_frame, previous_mean
                 )
-                if detection_level > 0.2:
+                if detection_level > 0.4 and is_recording_enabled:
                     print("Motion Detected")
+                    if not recording:
+                        writer = self.__record_config(path=self.record_path)
+                        recording = True
+                    record_init_time = time.time()
+                if recording:
+                    if (time.time() - record_init_time) < 15:
+                        writer.write(custom_window)
+                    else:
+                        writer.release()
+                        recording = False
+                        record_init_time = 0
                 cv2.imshow(self.device_name, custom_window)
                 cv2.waitKey(10)
-                writer.write(custom_window)
             track_duration = (time.time() - started_time) / 60
             if track_duration > self.duration:
                 stop_event.set()
                 break
         writer.release()
         cv2.destroyAllWindows()
-        print("Writing stopped %d", track_duration)
+        print("Writing stopped")
 
     def start_camera(self) -> None:
         logger.info("Camera: %s started.", self.device_name)
@@ -151,6 +164,7 @@ class Camera:
         cap_strm_proc = multiprocessing.Process(
             target=self.captured_stream_processor,
             args=(
+                self.rec_en,
                 self.frame_size,
                 rtsp_queue,
                 stop_event,

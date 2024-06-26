@@ -16,7 +16,7 @@ def main():
     ip_cam_01 = camera.Camera(
         device.get_device("CAM_00"),
         max_retries=5,
-        duration=1,
+        duration=2,
         human_detection=True,
         device_name="FrontPorch",
         rec_en=True,
