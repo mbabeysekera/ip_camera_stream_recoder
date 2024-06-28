@@ -44,7 +44,7 @@ class Camera:
         logger.info("Recording config - format: %s, save to: %s", format, path)
         if not os.path.exists(path):
             os.mkdir(path)
-        date_format = datetime.now().strftime("%d%m%Y_%H%M%S")
+        date_format = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         record_name = os.path.join(path, f"{self.device_name}_{date_format}.mp4")
         logger.debug("Recoring name: %s", record_name)
         rec_format = cv2.VideoWriter.fourcc(*format)
