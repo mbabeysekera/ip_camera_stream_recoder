@@ -1,5 +1,5 @@
 argparse
 numpy
-opencv-contrib-python
-opencv-python
+opencv-contrib-python==4.7.0.70
+opencv-python==4.7.0.70
 python-dotenv
