@@ -125,8 +125,8 @@ class Camera:
                 detection_level, previous_mean = self.__any_motion_detection(
                     gray_frame, previous_mean
                 )
-                if detection_level > 0.4 and is_recording_enabled:
-                    print("Motion Detected")
+                if detection_level > 0.5 and is_recording_enabled:
+                    # print("Motion Detected")
                     if not recording:
                         writer = self.__record_config(path=self.record_path)
                         recording = True
@@ -139,11 +139,12 @@ class Camera:
                         recording = False
                         record_init_time = 0
                 # cv2.imshow(self.device_name, custom_window)
-                # cv2.waitKey(10)
-            track_duration = (time.time() - started_time) / 60
-            if track_duration > self.duration:
-                stop_event.set()
-                break
+                cv2.waitKey(10)
+            if self.duration != -1:
+                track_duration = (time.time() - started_time) / 60
+                if track_duration > self.duration:
+                    stop_event.set()
+                    break
         writer.release()
         cv2.destroyAllWindows()
         print("Writing stopped")
