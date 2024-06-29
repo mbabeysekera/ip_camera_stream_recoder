@@ -29,7 +29,7 @@ def main():
         device_name=device_names[0],
         rec_en=True,
         record_path=recording_path,
-        frame_size=(640, 480),
+        frame_size=(940, 560),
     )
     ip_cam_01.start_camera()
 
