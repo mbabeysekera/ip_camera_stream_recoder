@@ -115,7 +115,7 @@ class Camera:
         #     human_detector = self.__enable_human_detection()
         # logger.info("Human detection enabled for camera: %s", self.device_name)
         previous_mean = 0.0
-        cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
+        # cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
         record_init_time = 0
         recording = False
         while not stop_event.is_set():
@@ -138,8 +138,8 @@ class Camera:
                         writer.release()
                         recording = False
                         record_init_time = 0
-                cv2.imshow(self.device_name, custom_window)
-                cv2.waitKey(10)
+                # cv2.imshow(self.device_name, custom_window)
+                # cv2.waitKey(10)
             track_duration = (time.time() - started_time) / 60
             if track_duration > self.duration:
                 stop_event.set()
