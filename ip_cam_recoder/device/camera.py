@@ -4,7 +4,7 @@ import time
 import os
 import logging
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class Camera:
         logger.debug("Recoring name: %s", record_name)
         rec_format = cv2.VideoWriter.fourcc(*format)
         return cv2.VideoWriter(
-            filename=record_name, fourcc=rec_format, fps=15.0, frameSize=self.frame_size
+            filename=record_name, fourcc=rec_format, fps=20.0, frameSize=self.frame_size
         )
 
     def __enable_human_detection(self) -> cv2.CascadeClassifier:
@@ -94,7 +94,7 @@ class Camera:
             retry_counter = 0
             if not rtsp_queue.full():
                 rtsp_queue.put(frame)
-            time.sleep(0.01)
+            time.sleep(0.04)
         capture.release()
         stop_event.set()
         while not rtsp_queue.empty():
@@ -115,7 +115,7 @@ class Camera:
         #     human_detector = self.__enable_human_detection()
         # logger.info("Human detection enabled for camera: %s", self.device_name)
         previous_mean = 0.0
-        cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
+        # cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
         record_init_time = 0
         recording = False
         while not stop_event.is_set():
@@ -125,8 +125,8 @@ class Camera:
                 detection_level, previous_mean = self.__any_motion_detection(
                     gray_frame, previous_mean
                 )
-                if detection_level > 0.4 and is_recording_enabled:
-                    print("Motion Detected")
+                if detection_level > 0.7 and is_recording_enabled:
+                    # print("Motion Detected")
                     if not recording:
                         writer = self.__record_config(path=self.record_path)
                         recording = True
@@ -138,12 +138,13 @@ class Camera:
                         writer.release()
                         recording = False
                         record_init_time = 0
-                cv2.imshow(self.device_name, custom_window)
-                cv2.waitKey(10)
-            track_duration = (time.time() - started_time) / 60
-            if track_duration > self.duration:
-                stop_event.set()
-                break
+                # cv2.imshow(self.device_name, custom_window)
+                # cv2.waitKey(10)
+            if self.duration != -1:
+                track_duration = (time.time() - started_time) / 60
+                if track_duration > self.duration:
+                    stop_event.set()
+                    break
         writer.release()
         cv2.destroyAllWindows()
         print("Writing stopped")

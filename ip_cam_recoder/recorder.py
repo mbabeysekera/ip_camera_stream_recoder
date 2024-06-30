@@ -24,12 +24,12 @@ def main():
     ip_cam_01 = camera.Camera(
         ip_cameras[0],
         max_retries=5,
-        duration=2,
+        duration=-1,
         human_detection=True,
         device_name=device_names[0],
         rec_en=True,
         record_path=recording_path,
-        frame_size=(640, 480),
+        frame_size=(940, 560),
     )
     ip_cam_01.start_camera()
 
