@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 class Camera:
     def __init__(
         self,
-        rtsp_link: str,
+        main_stream_channel: str,
+        sub_stream_channel: str,
         max_retries: int = 5,
         device_name: str = "Camera",
         rec_en: bool = False,
@@ -22,7 +23,8 @@ class Camera:
         record_path: str = "",
     ) -> None:
         logger.info("Camera initialized as: %s", device_name)
-        self.rtsp_link = rtsp_link
+        self.main_stream_channel = main_stream_channel
+        self.sub_stream_channel = sub_stream_channel
         self.max_retries = max_retries
         self.device_name = device_name
         self.rec_en = rec_en
@@ -49,7 +51,7 @@ class Camera:
         logger.debug("Recoring name: %s", record_name)
         rec_format = cv2.VideoWriter.fourcc(*format)
         return cv2.VideoWriter(
-            filename=record_name, fourcc=rec_format, fps=20.0, frameSize=self.frame_size
+            filename=record_name, fourcc=rec_format, fps=15.0, frameSize=self.frame_size
         )
 
     def __enable_human_detection(self) -> cv2.CascadeClassifier:
@@ -57,26 +59,31 @@ class Camera:
         cascade_classifire = cv2.CascadeClassifier("haarcascade_fullbody.xml")
         return cascade_classifire
 
-    def __any_motion_detection(
-        self, opt_frame: cv2.typing.MatLike, previous_mean: float
-    ) -> tuple[float, float]:
-        mean_value = np.mean(opt_frame)
-        detection_level = np.abs(mean_value - previous_mean)
-        # print(detection_level)
-        return (detection_level, mean_value)
-
     def capture_stream(
         self,
-        rtsp_link: str,
+        main_stream_channel: str,
+        sub_stream_channel: str,
         max_retries: int,
         rtsp_queue: multiprocessing.Queue,
         stop_event: multiprocessing.Event,
+        alter_resolution: multiprocessing.Event,
     ):
         # logger.info("RTSP stream initialized for %s", self.device_name)
-        capture = cv2.VideoCapture(rtsp_link)
-        # capture = cv2.VideoCapture(0)
+        default_channel = sub_stream_channel
+        print("initial channel: " + default_channel)
+        capture = cv2.VideoCapture(default_channel)
         retry_counter = 0
         while not stop_event.is_set():
+            if alter_resolution.is_set():
+                capture.release()
+                if default_channel == sub_stream_channel:
+                    default_channel = main_stream_channel
+                else:
+                    default_channel = sub_stream_channel
+                print("Altered channel: " + default_channel)
+                capture = cv2.VideoCapture(default_channel)
+                # time.sleep(0.05)
+                alter_resolution.clear()
             ret, frame = capture.read()
             if not ret:
                 retry_counter += 1
@@ -89,7 +96,7 @@ class Camera:
                 )
                 time.sleep(1)
                 capture.release()
-                capture = cv2.VideoCapture(rtsp_link)
+                capture = cv2.VideoCapture(default_channel)
                 continue
             retry_counter = 0
             if not rtsp_queue.full():
@@ -107,39 +114,43 @@ class Camera:
         frame_size: cv2.typing.Size,
         rtsp_queue: multiprocessing.Queue,
         stop_event: multiprocessing.Event,
+        alter_resolution: multiprocessing.Event,
     ):
         # logger.info("RTSP stream processor initialized for %s", self.device_name)
-        # self.stop_stream_capture = True
         started_time = time.time()
-        # if self.human_detection:
-        #     human_detector = self.__enable_human_detection()
+        if self.human_detection:
+            human_detector = self.__enable_human_detection()
         # logger.info("Human detection enabled for camera: %s", self.device_name)
-        previous_mean = 0.0
-        # cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
+        cv2.namedWindow(self.device_name, cv2.WINDOW_NORMAL)
         record_init_time = 0
         recording = False
         while not stop_event.is_set():
             if not rtsp_queue.empty():
-                custom_window = cv2.resize(rtsp_queue.get(), frame_size)
-                gray_frame = cv2.cvtColor(custom_window, cv2.COLOR_BGR2GRAY)
-                detection_level, previous_mean = self.__any_motion_detection(
-                    gray_frame, previous_mean
-                )
-                if detection_level > 0.7 and is_recording_enabled:
-                    # print("Motion Detected")
+                frame = rtsp_queue.get()
+                custom_window = cv2.resize(frame, (640, 480))
+                if self.human_detection:
+                    gray_frame = cv2.cvtColor(custom_window, cv2.COLOR_BGR2GRAY)
+                    detected = human_detector.detectMultiScale(
+                        gray_frame, scaleFactor=1.05, minSize=(30, 30)
+                    )
+                if len(detected) and is_recording_enabled:
+                    print("Motion Detected")
                     if not recording:
                         writer = self.__record_config(path=self.record_path)
                         recording = True
+                        alter_resolution.set()
                     record_init_time = time.time()
                 if recording:
                     if (time.time() - record_init_time) < 15:
-                        writer.write(custom_window)
+                        writer.write(frame)
                     else:
                         writer.release()
                         recording = False
-                        record_init_time = 0
-                # cv2.imshow(self.device_name, custom_window)
-                # cv2.waitKey(10)
+                        alter_resolution.set()
+                cv2.imshow(self.device_name, frame)
+                if cv2.waitKey(10) & 0xFF == ord("q"):
+                    stop_event.set()
+                    break
             if self.duration != -1:
                 track_duration = (time.time() - started_time) / 60
                 if track_duration > self.duration:
@@ -153,13 +164,16 @@ class Camera:
         logger.info("Camera: %s started.", self.device_name)
         rtsp_queue = multiprocessing.Queue(maxsize=10)
         stop_event = multiprocessing.Event()
+        alter_resolution = multiprocessing.Event()
         cap_strm = multiprocessing.Process(
             target=self.capture_stream,
             args=(
-                self.rtsp_link,
+                self.main_stream_channel,
+                self.sub_stream_channel,
                 self.max_retries,
                 rtsp_queue,
                 stop_event,
+                alter_resolution,
             ),
         )
         cap_strm_proc = multiprocessing.Process(
@@ -169,13 +183,10 @@ class Camera:
                 self.frame_size,
                 rtsp_queue,
                 stop_event,
+                alter_resolution,
             ),
         )
         cap_strm.start()
         cap_strm_proc.start()
         cap_strm.join()
         cap_strm_proc.join()
-
-    # def stop_camera(self) -> None:
-    #     self.stop_stream_capture = False
-    #     logger.info("Camera: %s stopped.", self.device_name)
