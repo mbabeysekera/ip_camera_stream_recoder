@@ -17,14 +17,30 @@ pip install -r .\requirements.txt -U pip --user //Linux, and MacOS
   - regular: --logLevel
   - Available Options: INFO, DEBUG, WARNING
 
-- IP Camera URLs
+- IP Camera Base URLs
 
   - short-hand: -cu
   - regular: --cameraURLs
   - Format: "rtsp://username:XXXXXX@<local-ip-address-of-the-ip-camera>:554"
+
+- Camera Main Stream and Sub Streams
+
+  - short-hand: -ms
+  - regular: --mainStream
+  - Format: "/Streaming/Channels/101" (Please refer your camera model for specifics)
+
+  - short-hand: -ss
+  - regular: --subStream
+  - Format: "/Streaming/Channels/102" (Please refer your camera model for specifics)
 
 - Stream Recording Path Config
 
   - short-hand: -rp
   - regular: --recordingPath
   - Format: <follow operating system specific path formats>
+
+- Device Names corresponding to each camera
+
+  - short-hand: -dn
+  - regular: --deviceName
+  - Format: "ANY_NAME" (type: String)
