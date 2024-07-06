@@ -20,6 +20,22 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "-ms",
+    "--mainStreamChannel",
+    action="extend",
+    nargs="+",
+    help="Add main stream channel endpoint",
+)
+
+parser.add_argument(
+    "-ss",
+    "--subStreamChannel",
+    action="extend",
+    nargs="+",
+    help="Add sub stream channel endpoint",
+)
+
+parser.add_argument(
     "-rp",
     "--recordingPath",
     help="Set the recording destination for camera streams",
@@ -44,6 +60,34 @@ def get_log_level() -> str:
 
 def get_rtsp_uris() -> list[str]:
     return args.cameraURLs
+
+
+def get_main_stream_channels() -> list[str]:
+    return args.mainStreamChannel
+
+
+def get_sub_stream_channels() -> list[str]:
+    return args.subStreamChannel
+
+
+def get_formatted_camera_urls() -> list[list[str]]:
+    camera_urls = get_rtsp_uris()
+    main_stream_channels = get_main_stream_channels()
+    sub_stream_channels = get_sub_stream_channels()
+    if len(camera_urls) != len(main_stream_channels) and len(camera_urls) != len(
+        sub_stream_channels
+    ):
+        raise Exception(
+            "Mismatch in given camera urls and channels. Please check and restart the application."
+        )
+    formatted_urls: list[list[str]] = []
+    for camera_url, main_channel, sub_channel in zip(
+        camera_urls,
+        main_stream_channels,
+        sub_stream_channels,
+    ):
+        formatted_urls.append([camera_url + main_channel, camera_url + sub_channel])
+    return formatted_urls
 
 
 def get_recording_path() -> str:
