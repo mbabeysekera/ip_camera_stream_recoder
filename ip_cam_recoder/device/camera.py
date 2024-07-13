@@ -68,7 +68,8 @@ class Camera:
         rtsp_queue: multiprocessing.Queue,
         capture_stream_queue: queue.Queue,
         stop_event: multiprocessing.Event,
-        alter_resolution: multiprocessing.Event,
+        high_resolution_cap: multiprocessing.Event,
+        low_resolution_cap: multiprocessing.Event,
         recording: multiprocessing.Event,
     ) -> None:
         default_channel = sub_stream_channel
@@ -76,14 +77,17 @@ class Camera:
         capture = cv2.VideoCapture(default_channel)
         retry_counter = 0
         while not stop_event.is_set():
-            if alter_resolution.is_set():
-                capture.release()
-                if default_channel == sub_stream_channel and recording.is_set():
+            if high_resolution_cap.is_set() or low_resolution_cap.is_set():
+                if high_resolution_cap.is_set() and recording.is_set():
                     default_channel = main_stream_channel
-                else:
+                    high_resolution_cap.clear()
+                if low_resolution_cap.is_set() and not recording.is_set():
                     default_channel = sub_stream_channel
+                    low_resolution_cap.clear()
+                capture.release()
+                while capture.isOpened():
+                    pass
                 capture = cv2.VideoCapture(default_channel)
-                alter_resolution.clear()
             ret, frame = capture.read()
             if not ret:
                 retry_counter += 1
@@ -117,27 +121,34 @@ class Camera:
         capture_stream_queue: queue.Queue,
         stop_event: multiprocessing.Event,
         start_recording: multiprocessing.Event,
-        alter_resolution: multiprocessing.Event,
+        high_resolution_cap: multiprocessing.Event,
+        low_resolution_cap: multiprocessing.Event,
         recording: multiprocessing.Event,
     ) -> None:
         writer = None
         while not stop_event.is_set():
-            time.sleep(0.01)
+            time.sleep(0.001)
             if start_recording.is_set():
                 if recording.is_set() and writer == None:
                     writer = self.__record_config(path=self.record_path)
                 start_recording.clear()
                 recording_init_time = time.time()
+                while high_resolution_cap.is_set():
+                    pass
             if not capture_stream_queue.empty():
                 frame = capture_stream_queue.get()
                 if recording.is_set() and not start_recording.is_set():
                     if time.time() - recording_init_time < 20:
                         writer.write(frame)
                     else:
+                        # print("RECORDING FLAG CLERED")
                         writer.release()
+                        while writer.isOpened():
+                            pass
                         writer = None
                         recording.clear()
-                        alter_resolution.set()
+                        # high_resolution_cap.clear()
+                        low_resolution_cap.set()
         if writer != None:
             writer.release()
         time.sleep(1)
@@ -150,9 +161,10 @@ class Camera:
         max_retries: int,
         rtsp_queue: multiprocessing.Queue,
         stop_event: multiprocessing.Event,
-        alter_resolution: multiprocessing.Event,
-        recording: multiprocessing.Event,
+        high_resolution_cap: multiprocessing.Event,
+        low_resolution_cap: multiprocessing.Event,
         start_recording: multiprocessing.Event,
+        recording: multiprocessing.Event,
     ):
         capture_stream_queue = queue.Queue(maxsize=10)
         reader_thread = threading.Thread(
@@ -164,7 +176,8 @@ class Camera:
                 rtsp_queue,
                 capture_stream_queue,
                 stop_event,
-                alter_resolution,
+                high_resolution_cap,
+                low_resolution_cap,
                 recording,
             ),
         )
@@ -174,7 +187,8 @@ class Camera:
                 capture_stream_queue,
                 stop_event,
                 start_recording,
-                alter_resolution,
+                high_resolution_cap,
+                low_resolution_cap,
                 recording,
             ),
         )
@@ -188,7 +202,8 @@ class Camera:
         is_recording_enabled: bool,
         rtsp_queue: multiprocessing.Queue,
         stop_event: multiprocessing.Event,
-        alter_resolution: multiprocessing.Event,
+        high_resolution_cap: multiprocessing.Event,
+        low_resolution_cap: multiprocessing.Event,
         start_recording: multiprocessing.Event,
         recording: multiprocessing.Event,
     ):
@@ -205,10 +220,10 @@ class Camera:
                         gray_frame, scaleFactor=1.05, minSize=(30, 30)
                     )
                     if len(detected) and is_recording_enabled:
-                        # print("Motion Detected")
-                        alter_resolution.set()
                         recording.set()
                         start_recording.set()
+                        high_resolution_cap.set()
+                        # print("Motion Detected + " + str(recording.is_set()))
                 # cv2.imshow(self.device_name, frame)
                 if cv2.waitKey(30) & 0xFF == ord("q"):
                     stop_event.set()
@@ -221,7 +236,8 @@ class Camera:
         logger.info("Camera: %s started.", self.device_name)
         rtsp_queue = multiprocessing.Queue(maxsize=10)
         stop_event = multiprocessing.Event()
-        alter_resolution = multiprocessing.Event()
+        high_resolution_cap = multiprocessing.Event()
+        low_resolution_cap = multiprocessing.Event()
         start_recording = multiprocessing.Event()
         recording = multiprocessing.Event()
         cap_strm = multiprocessing.Process(
@@ -232,7 +248,8 @@ class Camera:
                 self.max_retries,
                 rtsp_queue,
                 stop_event,
-                alter_resolution,
+                high_resolution_cap,
+                low_resolution_cap,
                 start_recording,
                 recording,
             ),
@@ -243,7 +260,8 @@ class Camera:
                 self.rec_en,
                 rtsp_queue,
                 stop_event,
-                alter_resolution,
+                high_resolution_cap,
+                low_resolution_cap,
                 start_recording,
                 recording,
             ),
