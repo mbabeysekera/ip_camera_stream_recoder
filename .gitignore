@@ -1,2 +1,4 @@
 # ignore locally stored file that are not needed for production app
 .env.local
+# ignore cpython compiled items
+*.pyc
